@@ -32,6 +32,8 @@ class Connection:
 
     def __init__(self, sock: socket.socket, directory: str) -> None:
         # FALTA: Inicializar atributos de Connection
+        self.__dir__ = directory
+        self.s = sock
         pass
 
     def handle(self) -> None:
