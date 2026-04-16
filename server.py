@@ -28,6 +28,10 @@ class Server:
         print(f"Serving {directory} on {addr}:{port}.")
         # FALTA: Crear socket del servidor, configurarlo, asignarlo
         # a una dirección y puerto, etc.
+        self.serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.serverSocket.bind((addr, port))
+        self.__dir__ = directory
+        self.serverSocket.listen(3)
 
     def serve(self) -> None:
         """
@@ -38,6 +42,9 @@ class Server:
             pass
             # FALTA: Aceptar una conexión al server, crear una
             # Connection para la conexión y atenderla hasta que termine.
+            (clientSocket, addres) = self.serverSocket.accept()
+            conn = connection(clientSocket, self.__dir__)
+            conn.handle()
 
 
 def main() -> None:
