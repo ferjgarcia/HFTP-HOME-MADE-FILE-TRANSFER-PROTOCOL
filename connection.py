@@ -38,6 +38,43 @@ class Connection:
         self.buffer = b""
         pass
 
+    #get_slice sin raw, abre filename, salta a offset bytes y lee size bytes
+    def get_slice(self, filename : str, offset : int, size : int) -> None :
+        path = self.__dir__ + "/" + filename #directorio base concatenado al nombre del archivo
+        
+        try:
+            with (path, "rb") as file : # leer el binario "read byte"
+                #obtener el tamaño del archivo
+                #filesize = 
+                #llegar al final del archivo ???
+
+                if offset < 0 or size < 0:
+                    #bad offset
+                    return
+                if offset + size > filesize:
+                    #error 203 posicion inexistente
+                    return
+                
+                #leer el fragmento
+                file.seek(offset) #mueve el cursor hasta el byte del ofset
+                data = file.read(size) #lee size bytes y devuelve data bytes
+
+                bytesin64 = b64encode(data)
+
+                #envia por el socket la linea oblig 
+                self.s.send(b"0 OK\r\n") 
+                # (b"" transforma a base64 )
+                self.s.send(bytesin64 + b"\r\n")
+
+        except FileNotFoundError :
+            # msg = mensaje de error
+             self.s.send(msg.encode("ascii"))
+        
+        except Exception :
+            # msg = mensaje de error
+             self.s.send(msg.encode("ascii"))    
+        
+    
     def handle(self) -> None:
         """
         Atiende eventos de la conexión hasta que termina.
@@ -108,9 +145,9 @@ class Connection:
                     continue
                 # Sigue la estructura get_slice FILENAME OFFSET SIZE [raw]
                 if cant_argumentos == 5 and argumentos[4] == "raw":
-                    get_slice(argumentos[1], OFFSET, SIZE, "raw")
+                    self.get_slice(argumentos[1], OFFSET, SIZE, "raw")
                 elif cant_argumentos == 4:
-                    get_slice(argumentos[1], OFFSET, SIZE)
+                    self.get_slice(argumentos[1], OFFSET, SIZE)
                 else:
                     self.s.send(encoded_inv_arg)
             else:
