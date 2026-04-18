@@ -43,16 +43,31 @@ class Connection:
         path = self.__dir__ + "/" + filename #directorio base concatenado al nombre del archivo
         
         try:
-            with open(path, "rb") as file : # leer el binario "read byte"
+            with open(path, "rb") as file : # abrir el arhcivo y leerlo en binario "read byte"
+                file.seek(0, 2) 
+                filesize = file.tell()
                 #obtener el tamaño del archivo
                 #filesize = 
                 #llegar al final del archivo ???
+                #seek() es usada para especificar el offset y moverme a la posicion
+                #tell() es usada para 
+                #f.tell() returns an integer giving the file object’s current position in the file, measured in bytes from the beginning of the file.
+                #  To change the file object’s position, use 
+                # f.seek(offset, from_what). 
+                # The position is computed from adding offset to a reference point; the reference point is selected by the from_what argument. 
+                # A from_what value of 0 measures from the beginning of the file, 1 uses the current file position, and 
+
+                # 2 uses the end of the file as the reference point.
+                # 
+                #  from_what can be omitted and defaults to 0, using the beginning of the file as the reference point. (https://docs.python.org/2/tutorial/inputoutput.html)
 
                 if offset < 0 or size < 0:
-                    #bad offset
+                    #msg = badd offsett y mensaje de error y eol
+                    self.s.send(msg.encode("ascii")) #send manda bytes al cliente -> escribe en la red
                     return
                 if offset + size > filesize:
-                    #error 203 posicion inexistente
+                    #msg = error 203 posicion inexistente
+                    self.s.send(msg.encode("ascii")) #send manda bytes al cliente -> escribe en la red
                     return
                 
                 #leer el fragmento
