@@ -62,12 +62,12 @@ class Connection:
                 #  from_what can be omitted and defaults to 0, using the beginning of the file as the reference point. (https://docs.python.org/2/tutorial/inputoutput.html)
 
                 if offset < 0 or size < 0:
-                    #msg = badd offsett y mensaje de error y eol
-                    self.s.send(msg.encode("ascii")) #send manda bytes al cliente -> escribe en la red
+                    msg = str(BAD_OFFSET) + " " + error_messages[BAD_OFFSET] + EOL
+                    self.s.sendall(msg.encode("ascii")) #sendall manda bytes al cliente -> escribe en la red
                     return
                 if offset + size > filesize:
-                    #msg = error 203 posicion inexistente
-                    self.s.send(msg.encode("ascii")) #send manda bytes al cliente -> escribe en la red
+                    msg = str(203) + " " + error_messages[203] + EOL
+                    self.s.sendall(msg.encode("ascii")) #sendall manda bytes al cliente -> escribe en la red
                     return
                 
                 #leer el fragmento
@@ -77,26 +77,63 @@ class Connection:
                 if not raw:
                     bytesin64 = b64encode(data)
                     #envia por el socket la linea oblig 
-                    self.s.send(b"0 OK\r\n") 
+                    self.s.sendall(b"0 OK\r\n") 
                     # (b"" transforma a base64 )
-                    self.s.send(bytesin64 + b"\r\n")
+                    self.s.sendall(bytesin64 + b"\r\n")
 
                 else: 
                     header = f"Content-Length: {size}\r\n".encode("ascii")
                     # mandar bytes crudos
-                    self.s.send(b"0 OK\r\n")
-                    self.s.send(header)
-                    self.s.send(b"\r\n")
-                    self.s.send(data) #sin pasarlo a base64
+                    self.s.sendall(b"0 OK\r\n")
+                    self.s.sendall(header)
+                    self.s.sendall(b"\r\n")
+                    self.s.sendall(data) #sin pasarlo a base64
 
-        except FileNotFoundError :
-            # msg = mensaje de error
-             self.s.send(msg.encode("ascii"))
+        except FileNotFoundError:
+            msg = str(FILE_NOT_FOUND) + " " + error_messages[FILE_NOT_FOUND] + EOL #"<code> <msg>\r\n"
+            self.s.sendall(msg.encode("ascii"))
         
-        except Exception :
-            # msg = mensaje de error
-             self.s.send(msg.encode("ascii"))    
+        except Exception: #demas fallos son internos
+            msg = str(INTERNAL_ERROR) + " " + error_messages[INTERNAL_ERROR] + EOL #"<code> <msg>\r\n"
+            self.s.sendall(msg.encode("ascii"))    
         
+#'m confused about socket.send() and socket.sendall() functions in Python. As I understand from the documentation send() function uses TCP protocol and sendall() function uses UDP protocol for sending data. I know that TCP is more reliable for most of the Web Applications because we can check which packets are sent and which packets are not. That's why, I think use of send() function can be more reliable rather than sendall() function.
+# socket.send is a low-level method and basically just the C/syscall method send(3) / send(2). It can send less bytes than you requested, but returns the number of bytes sent.
+
+# socket.sendall is a high-level Python-only method that sends the entire buffer you pass or throws an exception. It does that by calling socket.send until everything has been sent or an error occurs.
+
+# If you're using TCP with blocking sockets and don't want to be bothered by internals (this is the case for most simple network applications), use sendall.
+
+# And python docs:
+
+# Unlike send(), this method continues to send data from string until either all data has been sent or an error occurs. None is returned on success. On error, an exception is raised, and there is no way to determine how much data, if any, was successfully sent
+
+# Credits to Philipp Hagemeister for brief description I got in the past.
+
+#send() es bajo nivel, puede enviar menos bytes de los q le paso
+#es mas fino pero mas propenso a errores
+#como usamos TCP, usar send() en este caso podria romper el protocolo HFTP
+#el cliente parsea por lineas o por Content-length, se podria enviar solo parte de solo parte de "0 OK\r\n", o parte del base64, o cortar el header en raw
+#sendall() es un wrapper sobre send() -> hace el loop para enviar todo 
+#o se envia todo o lanza excepcion, pero no devuelve cantidad de Bytes
+
+#send y sendall() usan el mismo protocolo, pero sendall() envia todo o lanza una excepcion. -> send() tiene el problema de que llegue solo 0 OK sin el EOL, rompiendo el parser
+
+#tcp es stream de bytes sin limite de mensaje, y el receptor no sabe donde termina un mensaje y empieza el que le sigue, entonces el protocolo usa una convencion para que el clietne sepa donde dejo de leer -> esto lo llamamos framing
+
+#tenemos dos estratefgias de framing:
+
+#base64 : EL cliente lee hasta encontrar EOL, y hacer esto en base64 garantiza q la salida sean solo caracteres ascii imprimibles; entonces nunca aparece un EOL en medio de los datos codificados, entonces EOL es un delimitador seguro y no es confuso
+#el cliente va a recibir hasta que encuentro un EOL (lo va a tener que decodficar)
+
+#en el modo RAW, hacemos framing por content-length (largo del contenido)
+#los bytes serian arbitrarios (cualquier byte podria ser EOL en base64 por coincidencia) , entonces usar un delimitador seria confuso para el cliente (mezcla datos con el EOL)
+#le avisamos cuantos datos va a recibir de antemanos con content lenght, y el cliente entonces va a leer el header y leer n bytes, sin buscar un delimitador, entonces sin importar lo que haya adentro, lee la cantidad n de bytes y para
+
+#en ascii cada caracter ocupa 1 Byte, pero en utf8, hay caracteres que ocupan mas bytes, entonces podriamos pasar un offset y un tamaño que nos corte en medio un caracter especial
+#en modo raw se mandan los bytes crudos, para q el cliente los interprete, y en base64 b64encode opera sobre bytes arbitrarios sin importar si son texto valido o no
+#si quisieramos hacer data.decode("utf-8") sobre un fragmento, podriamos obtener un error de decodificacion de unicode. Lo evitamos abriendo el modo en readbynari, y nunca intenta decodificar el contenido, tratandolo siempre como bytes opacos
+
     
     def handle(self) -> None:
         """
