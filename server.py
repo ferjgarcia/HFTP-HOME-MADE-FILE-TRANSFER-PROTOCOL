@@ -39,11 +39,10 @@ class Server:
         y se espera a que concluya antes de seguir.
         """
         while True:
-            pass
             # FALTA: Aceptar una conexión al server, crear una
             # Connection para la conexión y atenderla hasta que termine.
-            (clientSocket, addres) = self.serverSocket.accept()
-            conn = connection(clientSocket, self.__dir__)
+            (clientSocket, address) = self.serverSocket.accept()
+            conn = connection.Connection(clientSocket, self.__dir__)
             conn.handle()
 
 
