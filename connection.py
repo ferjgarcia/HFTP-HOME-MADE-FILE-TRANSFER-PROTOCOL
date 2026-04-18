@@ -39,11 +39,11 @@ class Connection:
         pass
 
     #get_slice sin raw, abre filename, salta a offset bytes y lee size bytes
-    def get_slice(self, filename : str, offset : int, size : int) -> None :
+    def get_slice(self, filename: str, offset: int, size: int, raw:bool = False) -> None :
         path = self.__dir__ + "/" + filename #directorio base concatenado al nombre del archivo
         
         try:
-            with (path, "rb") as file : # leer el binario "read byte"
+            with open(path, "rb") as file : # leer el binario "read byte"
                 #obtener el tamaño del archivo
                 #filesize = 
                 #llegar al final del archivo ???
@@ -59,12 +59,20 @@ class Connection:
                 file.seek(offset) #mueve el cursor hasta el byte del ofset
                 data = file.read(size) #lee size bytes y devuelve data bytes
 
-                bytesin64 = b64encode(data)
+                if not raw:
+                    bytesin64 = b64encode(data)
+                    #envia por el socket la linea oblig 
+                    self.s.send(b"0 OK\r\n") 
+                    # (b"" transforma a base64 )
+                    self.s.send(bytesin64 + b"\r\n")
 
-                #envia por el socket la linea oblig 
-                self.s.send(b"0 OK\r\n") 
-                # (b"" transforma a base64 )
-                self.s.send(bytesin64 + b"\r\n")
+                else: 
+                    header = f"Content-Length: {size}\r\n".encode("ascii")
+                    # mandar bytes crudos
+                    self.s.send(b"0 OK\r\n")
+                    self.s.send(header)
+                    self.s.send(b"\r\n")
+                    self.s.send(data) #sin pasarlo a base64
 
         except FileNotFoundError :
             # msg = mensaje de error
@@ -145,7 +153,7 @@ class Connection:
                     continue
                 # Sigue la estructura get_slice FILENAME OFFSET SIZE [raw]
                 if cant_argumentos == 5 and argumentos[4] == "raw":
-                    self.get_slice(argumentos[1], OFFSET, SIZE, "raw")
+                    self.get_slice(argumentos[1], OFFSET, SIZE, raw = True)
                 elif cant_argumentos == 4:
                     self.get_slice(argumentos[1], OFFSET, SIZE)
                 else:
