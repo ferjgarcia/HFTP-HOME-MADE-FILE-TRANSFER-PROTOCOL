@@ -36,7 +36,7 @@ class Connection:
         self.__dir__ = directory
         self.s = sock
         self.buffer = b""
-        pass
+        self.client = client.Client()
 
     def handle(self) -> None:
         """
@@ -77,25 +77,25 @@ class Connection:
 
             if argumentos[0] == COMMANDS[0]:  # Es get_file_listing
                 if cant_argumentos == 1:
-                    get_file_listing()                          # Funciones a implementar
+                    self.client.get_file_listing()                          # Funciones a implementar
                 else:
                     self.s.send(encoded_inv_arg)        # Se pasaron más argumentos de los necesarios (Repetido en los demás)
 
             elif argumentos[0] == COMMANDS[3]:    # Es help
                 if cant_argumentos == 1:
-                    help_command()                              # Funciones a implementar
+                    self.client.help_command()                              # Funciones a implementar
                 else:
                     self.s.send(encoded_inv_arg)
 
             elif argumentos[0] == COMMANDS[4]:    # Es quit
                 if cant_argumentos == 1:
-                    quit_command()                              # Funciones a implementar
+                    self.client.quit_command()                              # Funciones a implementar
                 else:
                     self.s.send(encoded_inv_arg)
 
             elif argumentos[0] == COMMANDS[1]:    # Es get_metadata FILENAME
                 if cant_argumentos == 2:    
-                    get_metadata(argumentos[1]) # Debería poner una comprobación de si esta bien el argumento o se hace en la función?
+                    self.client.get_metadata(argumentos[1]) # Debería poner una comprobación de si esta bien el argumento o se hace en la función?
                 else: 
                     self.s.send(encoded_inv_arg)
 
@@ -108,9 +108,9 @@ class Connection:
                     continue
                 # Sigue la estructura get_slice FILENAME OFFSET SIZE [raw]
                 if cant_argumentos == 5 and argumentos[4] == "raw":
-                    get_slice(argumentos[1], OFFSET, SIZE, "raw")
+                    self.client.get_slice(argumentos[1], OFFSET, SIZE, "raw")
                 elif cant_argumentos == 4:
-                    get_slice(argumentos[1], OFFSET, SIZE)
+                    self.client.get_slice(argumentos[1], OFFSET, SIZE)
                 else:
                     self.s.send(encoded_inv_arg)
             else:
