@@ -6,6 +6,7 @@
 import socket
 import client
 from base64 import b64encode
+import os
 
 from constants import (
     BAD_EOL,
@@ -36,7 +37,6 @@ class Connection:
         self.__dir__ = directory
         self.s = sock
         self.buffer = b""
-        self.client = client.Client()
 
     def handle(self) -> None:
         """
@@ -77,25 +77,25 @@ class Connection:
 
             if argumentos[0] == COMMANDS[0]:  # Es get_file_listing
                 if cant_argumentos == 1:
-                    self.client.get_file_listing()                          # Funciones a implementar
+                    self.get_file_listing()                          # Funciones a implementar
                 else:
                     self.s.send(encoded_inv_arg)        # Se pasaron más argumentos de los necesarios (Repetido en los demás)
 
             elif argumentos[0] == COMMANDS[3]:    # Es help
                 if cant_argumentos == 1:
-                    self.client.help_command()                              # Funciones a implementar
+                    self.help_command()                              # Funciones a implementar
                 else:
                     self.s.send(encoded_inv_arg)
 
             elif argumentos[0] == COMMANDS[4]:    # Es quit
                 if cant_argumentos == 1:
-                    self.client.quit_command()                              # Funciones a implementar
+                    self.quit_command()                              # Funciones a implementar
                 else:
                     self.s.send(encoded_inv_arg)
 
             elif argumentos[0] == COMMANDS[1]:    # Es get_metadata FILENAME
                 if cant_argumentos == 2:    
-                    self.client.get_metadata(argumentos[1]) # Debería poner una comprobación de si esta bien el argumento o se hace en la función?
+                    self.get_metadata(argumentos[1]) # Debería poner una comprobación de si esta bien el argumento o se hace en la función?
                 else: 
                     self.s.send(encoded_inv_arg)
 
@@ -108,15 +108,28 @@ class Connection:
                     continue
                 # Sigue la estructura get_slice FILENAME OFFSET SIZE [raw]
                 if cant_argumentos == 5 and argumentos[4] == "raw":
-                    self.client.get_slice(argumentos[1], OFFSET, SIZE, "raw")
+                    self.get_slice(argumentos[1], OFFSET, SIZE, "raw")
                 elif cant_argumentos == 4:
-                    self.client.get_slice(argumentos[1], OFFSET, SIZE)
+                    self.get_slice(argumentos[1], OFFSET, SIZE)
                 else:
                     self.s.send(encoded_inv_arg)
             else:
                 self.s.send(encoded_inv_com)        # Si no existe el comando
 
-
+    def get_file_listing (self) -> None:
+        result = os.listdir(self.__dir__)
+        print(result)
+        ret_ok = str(CODE_OK) + " " + error_messages[CODE_OK] + EOL
+        encoded_ret_ok = ret_ok.encode("ascii")
+        self.s.send(encoded_ret_ok)
+        for nombre_archivo in result:
+            res = nombre_archivo + EOL
+            encoded_res = res.encode("ascii")
+            self.s.send(encoded_res)
+        final = EOL
+        encoded_final = final.encode("ascii")
+        self.s.send(encoded_final)
+        return None
         
         # INSTRUCCIONES DE COMO IMPLEMENTAR DE CLASES
         # Leo entrada, leer hasta que llegue \r\n
