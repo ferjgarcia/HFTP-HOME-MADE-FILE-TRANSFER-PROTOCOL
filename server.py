@@ -9,7 +9,7 @@
 import argparse
 import socket
 import sys
-import connection
+from connection import Connection
 from constants import DEFAULT_ADDR, DEFAULT_DIR, DEFAULT_PORT
 
 
@@ -43,7 +43,7 @@ class Server:
             # FALTA: Aceptar una conexión al server, crear una
             # Connection para la conexión y atenderla hasta que termine.
             (clientSocket, addres) = self.serverSocket.accept()
-            conn = connection(clientSocket, self.__dir__)
+            conn = Connection(clientSocket, self.__dir__)
             conn.handle()
 
 
