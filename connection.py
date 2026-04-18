@@ -33,33 +33,40 @@ class Connection:
 
     def __init__(self, sock: socket.socket, directory: str) -> None:
         # FALTA: Inicializar atributos de Connection
-        self.__dir__ = directory
+        self.directory = directory
         self.s = sock
         self.buffer = b""
         pass
 
-    #get_slice sin raw, abre filename, salta a offset bytes y lee size bytes
+
     def get_slice(self, filename: str, offset: int, size: int, raw:bool = False) -> None :
-        path = self.__dir__ + "/" + filename #directorio base concatenado al nombre del archivo
+        """
+        envia SIZE bytes del archivo FILENAME a partir de OFFSET.
+
+        metodos de framing:
+        - base64 (raw=False): el fragmento se codifica en base64 y se envia
+          como una sola linea ascii terminada en \\r\\n. el cliente lee hasta
+          ese delimitador y decodifica. funciona porque base64 nunca produce
+          los bytes 0x0D ni 0x0A en su salida
+
+        - raw (raw=True): se envia una cabecera Content-Length con el num
+          exacto de bytes, luego una linea vacia y despues los bytes
+          del archivo.  \\r\\n no se puede usar
+          porque el archivo puede contener esos mismos bytes como datos
+        """
+
+        ## construir el path y veo que no sesalga del directorio base
+        if ".." in filename or "/" in filename: 
+            msg = str(FILE_NOT_FOUND) + " " + error_messages[FILE_NOT_FOUND] + EOL
+            self.s.sendall(msg.encode("ascii"))
+            return
+
+        path = self.directory + "/" + filename
         
         try:
             with open(path, "rb") as file : # abrir el arhcivo y leerlo en binario "read byte"
-                file.seek(0, 2) 
-                filesize = file.tell()
-                #obtener el tamaño del archivo
-                #filesize = 
-                #llegar al final del archivo ???
-                #seek() es usada para especificar el offset y moverme a la posicion
-                #tell() es usada para 
-                #f.tell() returns an integer giving the file object’s current position in the file, measured in bytes from the beginning of the file.
-                #  To change the file object’s position, use 
-                # f.seek(offset, from_what). 
-                # The position is computed from adding offset to a reference point; the reference point is selected by the from_what argument. 
-                # A from_what value of 0 measures from the beginning of the file, 1 uses the current file position, and 
-
-                # 2 uses the end of the file as the reference point.
-                # 
-                #  from_what can be omitted and defaults to 0, using the beginning of the file as the reference point. (https://docs.python.org/2/tutorial/inputoutput.html)
+                file.seek(0, 2) #me muevo al final del archivo (2) 
+                filesize = file.tell() #leo la posicion
 
                 if offset < 0 or size < 0:
                     msg = str(BAD_OFFSET) + " " + error_messages[BAD_OFFSET] + EOL
@@ -75,6 +82,9 @@ class Connection:
                 data = file.read(size) #lee size bytes y devuelve data bytes
 
                 if not raw:
+                    #en base64, framinf por el delimitador EOL
+                    #b64encode nos garantiza salida ascii pura, entonces 
+                    #el eol es seguro (como delimitador de finlinea)
                     bytesin64 = b64encode(data)
                     #envia por el socket la linea oblig 
                     self.s.sendall(b"0 OK\r\n") 
@@ -82,11 +92,13 @@ class Connection:
                     self.s.sendall(bytesin64 + b"\r\n")
 
                 else: 
+                    #en raw, el framing es por longitud
+                    #leemos content-lenght bytes del cuerpo
                     header = f"Content-Length: {size}\r\n".encode("ascii")
                     # mandar bytes crudos
                     self.s.sendall(b"0 OK\r\n")
                     self.s.sendall(header)
-                    self.s.sendall(b"\r\n")
+                    self.s.sendall(b"\r\n") # linea vacia = fin de cabeceras
                     self.s.sendall(data) #sin pasarlo a base64
 
         except FileNotFoundError:
@@ -97,6 +109,18 @@ class Connection:
             msg = str(INTERNAL_ERROR) + " " + error_messages[INTERNAL_ERROR] + EOL #"<code> <msg>\r\n"
             self.s.sendall(msg.encode("ascii"))    
         
+
+#seek() es usada para especificar el offset y moverme a la posicion
+#tell() es usada para 
+#f.tell() returns an integer giving the file object’s current position in the file, measured in bytes from the beginning of the file.
+#  To change the file object’s position, use 
+# f.seek(offset, from_what). 
+# The position is computed from adding offset to a reference point; the reference point is selected by the from_what argument. 
+# A from_what value of 0 measures from the beginning of the file, 1 uses the current file position, and 
+
+# 2 uses the end of the file as the reference point.
+# 
+#  from_what can be omitted and defaults to 0, using the beginning of the file as the reference point. (https://docs.python.org/2/tutorial/inputoutput.html)
 #'m confused about socket.send() and socket.sendall() functions in Python. As I understand from the documentation send() function uses TCP protocol and sendall() function uses UDP protocol for sending data. I know that TCP is more reliable for most of the Web Applications because we can check which packets are sent and which packets are not. That's why, I think use of send() function can be more reliable rather than sendall() function.
 # socket.send is a low-level method and basically just the C/syscall method send(3) / send(2). It can send less bytes than you requested, but returns the number of bytes sent.
 
@@ -132,7 +156,7 @@ class Connection:
 
 #en ascii cada caracter ocupa 1 Byte, pero en utf8, hay caracteres que ocupan mas bytes, entonces podriamos pasar un offset y un tamaño que nos corte en medio un caracter especial
 #en modo raw se mandan los bytes crudos, para q el cliente los interprete, y en base64 b64encode opera sobre bytes arbitrarios sin importar si son texto valido o no
-#si quisieramos hacer data.decode("utf-8") sobre un fragmento, podriamos obtener un error de decodificacion de unicode. Lo evitamos abriendo el modo en readbynari, y nunca intenta decodificar el contenido, tratandolo siempre como bytes opacos
+#si quisieramos hacer data.decode("utf-8") sobre un fragmento, podriamos obtener un error de decodificacion de unicode. Lo evitamos abriendo el modo en readbinary, y nunca intenta decodificar el contenido, tratandolo siempre como bytes opacos
 
     
     def handle(self) -> None:
@@ -142,7 +166,7 @@ class Connection:
         while True:
             # Leo entrada, leer hasta que llegue \r\n
             while EOL.encode("ascii") not in self.buffer:
-                temp_buff = self.s.recv(4096)
+                temp_buff = self.s.recv(4096) #4096 = max bytes c/llamada
                 if temp_buff == b"":       # Si recibo vacío, significa que la conexión terminó
                     return
                 self.buffer += temp_buff
