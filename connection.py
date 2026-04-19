@@ -83,13 +83,13 @@ class Connection:
 
             elif argumentos[0] == COMMANDS[3]:    # Es help
                 if cant_argumentos == 1:
-                    self.help_command()                              # Funciones a implementar
+                    self.help()                              # Funciones a implementar
                 else:
                     self.s.send(encoded_inv_arg)
 
             elif argumentos[0] == COMMANDS[4]:    # Es quit
                 if cant_argumentos == 1:
-                    self.quit_command()                              # Funciones a implementar
+                    self.quit()                              # Funciones a implementar
                 else:
                     self.s.send(encoded_inv_arg)
 
@@ -130,10 +130,20 @@ class Connection:
         encoded_final = final.encode("ascii")
         self.s.send(encoded_final)
         return None
-        
-        # INSTRUCCIONES DE COMO IMPLEMENTAR DE CLASES
-        # Leo entrada, leer hasta que llegue \r\n
-        # Me fijo si es un comando
-        # Si los parámetros son correctos
-        # Ejecuto el comando
-        # Mando respuesta
+
+    def quit(self) -> None:
+        msg = str(CODE_OK) + " " + error_messages[CODE_OK] + EOL
+        encoded_msg = msg.encode("ascii")
+        self.s.send(encoded_msg)
+        self.s.close()  # Cerramos la conexión
+
+    def help(self) -> None:
+        comms = "get_file_listing" + EOL + \
+        "get_metadata" + EOL + \
+        "get_slice" + EOL + \
+        "help" + EOL + \
+        "quit" + EOL
+
+        msg = str(CODE_OK) + " " + error_messages[CODE_OK] + EOL + comms
+        encoded_msg = msg.encode("ascii")
+        self.s.send(encoded_msg)
