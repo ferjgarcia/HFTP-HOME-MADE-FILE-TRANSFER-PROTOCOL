@@ -10,6 +10,7 @@ import argparse
 import socket
 import sys
 import connection
+import logging
 from constants import DEFAULT_ADDR, DEFAULT_DIR, DEFAULT_PORT
 
 
@@ -28,6 +29,10 @@ class Server:
         print(f"Serving {directory} on {addr}:{port}.")
         # FALTA: Crear socket del servidor, configurarlo, asignarlo
         # a una dirección y puerto, etc.
+        self.serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.serverSocket.bind((addr, port))
+        self.__dir__ = directory
+        self.serverSocket.listen(3)
 
     def serve(self) -> None:
         """
@@ -35,9 +40,11 @@ class Server:
         y se espera a que concluya antes de seguir.
         """
         while True:
-            pass
             # FALTA: Aceptar una conexión al server, crear una
             # Connection para la conexión y atenderla hasta que termine.
+            (clientSocket, address) = self.serverSocket.accept()
+            conn = connection.Connection(clientSocket, self.__dir__)
+            conn.handle()
 
 
 def main() -> None:
@@ -69,4 +76,5 @@ def main() -> None:
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO, format = "%(message)s")
     main()
