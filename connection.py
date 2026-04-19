@@ -7,6 +7,7 @@ import socket
 import client
 from base64 import b64encode
 import os
+import logging
 
 from constants import (
     BAD_EOL,
@@ -77,7 +78,9 @@ class Connection:
 
             if argumentos[0] == COMMANDS[0]:  # Es get_file_listing
                 if cant_argumentos == 1:
+                    logging.info("Request: get_file_listing")
                     self.get_file_listing()                          # Funciones a implementar
+                    
                 else:
                     self.s.send(encoded_inv_arg)        # Se pasaron más argumentos de los necesarios (Repetido en los demás)
 
@@ -95,6 +98,7 @@ class Connection:
 
             elif argumentos[0] == COMMANDS[1]:    # Es get_metadata FILENAME
                 if cant_argumentos == 2:    
+                    logging.info("Request: get_metadata %s", decoded_string)
                     self.get_metadata(argumentos[1]) # Debería poner una comprobación de si esta bien el argumento o se hace en la función?
                 else: 
                     self.s.send(encoded_inv_arg)
@@ -118,7 +122,6 @@ class Connection:
 
     def get_file_listing (self) -> None:
         result = os.listdir(self.__dir__)
-        print(result)
         ret_ok = str(CODE_OK) + " " + error_messages[CODE_OK] + EOL
         encoded_ret_ok = ret_ok.encode("ascii")
         self.s.send(encoded_ret_ok)
@@ -136,11 +139,14 @@ class Connection:
         encoded_file_not_found = ret_file_not_found.encode("ascii")
         list_file = os.listdir(self.__dir__)
         if file in list_file:
-            size = os.path.getsize(file)
-            
+            path = os.path.join(self.__dir__, file)
+            size = os.path.getsize(path)
+            ret = str(CODE_OK) + " " + error_messages[CODE_OK] + EOL
+            ret_size = str(size) + EOL
+            self.s.send(ret.encode("ascii"))
+            self.s.send(ret_size.encode("ascii"))
         else: 
             self.s.send(encoded_file_not_found)
-
         return None
         
         # INSTRUCCIONES DE COMO IMPLEMENTAR DE CLASES

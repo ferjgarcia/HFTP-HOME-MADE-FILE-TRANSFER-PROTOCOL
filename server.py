@@ -10,6 +10,7 @@ import argparse
 import socket
 import sys
 import connection
+import logging
 from constants import DEFAULT_ADDR, DEFAULT_DIR, DEFAULT_PORT
 
 
@@ -75,4 +76,5 @@ def main() -> None:
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO, format = "%(message)s")
     main()
