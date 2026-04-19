@@ -130,6 +130,18 @@ class Connection:
         encoded_final = final.encode("ascii")
         self.s.send(encoded_final)
         return None
+    
+    def get_metadata (self, file: str) -> None:
+        ret_file_not_found = str(FILE_NOT_FOUND) + " " + error_messages[FILE_NOT_FOUND] + EOL
+        encoded_file_not_found = ret_file_not_found.encode("ascii")
+        list_file = os.listdir(self.__dir__)
+        if file in list_file:
+            size = os.path.getsize(file)
+            
+        else: 
+            self.s.send(encoded_file_not_found)
+
+        return None
         
         # INSTRUCCIONES DE COMO IMPLEMENTAR DE CLASES
         # Leo entrada, leer hasta que llegue \r\n
