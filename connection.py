@@ -90,6 +90,7 @@ class Connection:
             elif argumentos[0] == COMMANDS[4]:    # Es quit
                 if cant_argumentos == 1:
                     self.quit()                              # Funciones a implementar
+                    return
                 else:
                     self.s.send(encoded_inv_arg)
 
@@ -138,12 +139,7 @@ class Connection:
         self.s.close()  # Cerramos la conexión
 
     def help(self) -> None:
-        comms = "get_file_listing" + EOL + \
-        "get_metadata" + EOL + \
-        "get_slice" + EOL + \
-        "help" + EOL + \
-        "quit" + EOL
-
-        msg = str(CODE_OK) + " " + error_messages[CODE_OK] + EOL + comms
+        comms = EOL.join(COMMANDS) + EOL
+        msg = str(CODE_OK) + " " + error_messages[CODE_OK] + EOL + comms + EOL
         encoded_msg = msg.encode("ascii")
         self.s.send(encoded_msg)
