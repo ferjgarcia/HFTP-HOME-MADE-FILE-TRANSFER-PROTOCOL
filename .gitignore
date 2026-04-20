@@ -1,0 +1,10 @@
+# Entorno virtual
+venv/
+
+# Caché de Python
+__pycache__/
+*.pyc
+
+# Archivos de cobertura
+.coverage
+htmlcov/
