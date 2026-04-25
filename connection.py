@@ -133,12 +133,23 @@ class Connection:
         return None
 
     def quit(self) -> None:
+        """
+        Sin argumentos.
+        Termina la conexión.
+        El servidor responde 0 OK y cierra la conexión.
+        Sin payload.
+        """
         msg = str(CODE_OK) + " " + error_messages[CODE_OK] + EOL
         encoded_msg = msg.encode("ascii")
         self.s.send(encoded_msg)
         self.s.close()  # Cerramos la conexión
 
     def help(self) -> None:
+        """
+        Lista los comandos disponibles (uno por línea, fin con línea vacía \r\n).
+        Facilita pruebas con telnet y depuración.
+        Respuesta: 0 OK + \r\n + nombres de comandos + \r\n.
+        """
         comms = EOL.join(COMMANDS) + EOL
         msg = str(CODE_OK) + " " + error_messages[CODE_OK] + EOL + comms + EOL
         encoded_msg = msg.encode("ascii")
