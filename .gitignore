@@ -8,3 +8,4 @@ __pycache__/
 # Archivos de cobertura
 .coverage
 htmlcov/
+testdata/
