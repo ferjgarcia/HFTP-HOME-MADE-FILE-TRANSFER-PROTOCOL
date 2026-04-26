@@ -221,7 +221,7 @@ class Connection:
                 self.s.send(encoded_inv_com)  # Si no existe el comando
 
     def get_file_listing (self) -> None:
-        result = os.listdir(self.__dir__)
+        result = os.listdir(self.directory)
         ret_ok = str(CODE_OK) + " " + error_messages[CODE_OK] + EOL
         encoded_ret_ok = ret_ok.encode("ascii")
         self.s.send(encoded_ret_ok)
@@ -237,9 +237,9 @@ class Connection:
     def get_metadata (self, file: str) -> None:
         ret_file_not_found = str(FILE_NOT_FOUND) + " " + error_messages[FILE_NOT_FOUND] + EOL
         encoded_file_not_found = ret_file_not_found.encode("ascii")
-        list_file = os.listdir(self.__dir__)
+        list_file = os.listdir(self.directory)
         if file in list_file:
-            path = os.path.join(self.__dir__, file)
+            path = os.path.join(self.directory, file)
             size = os.path.getsize(path)
             ret = str(CODE_OK) + " " + error_messages[CODE_OK] + EOL
             ret_size = str(size) + EOL
