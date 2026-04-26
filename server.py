@@ -11,6 +11,7 @@ import socket
 import sys
 import connection
 import logging
+import threading
 from constants import DEFAULT_ADDR, DEFAULT_DIR, DEFAULT_PORT
 
 
@@ -42,11 +43,16 @@ class Server:
         while True:
             # FALTA: Aceptar una conexión al server, crear una
             # Connection para la conexión y atenderla hasta que termine.
-            (clientSocket, address) = self.serverSocket.accept()
-            conn = connection.Connection(clientSocket, self.__dir__)
-            conn.handle()
-
-
+            try:
+                (clientSocket, address) = self.serverSocket.accept()
+                conn = connection.Connection(clientSocket, self.__dir__)
+                hilo = threading.Thread(target=conn.handle)  
+                hilo.daemon = True 
+                hilo.start() 
+            except Exception as e:
+                print(f"Error en el servidor: {e}")
+                
+             
 def main() -> None:
     """Parsea los argumentos y lanza el server"""
     parser = argparse.ArgumentParser()
