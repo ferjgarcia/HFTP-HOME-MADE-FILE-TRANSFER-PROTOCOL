@@ -163,6 +163,8 @@ class Connection:
 
                 self.buffer += temp_buff
 
+            except socket.timeout:
+                continue
             except Exception as e:
                 print(f"DEBUG: Excepción capturada: {e}")
                 self.s.close()
@@ -230,7 +232,7 @@ class Connection:
             try:
                 OFFSET = int(argumentos[2])
                 SIZE = int(argumentos[3])
-            except BaseException:
+            except (ValueError, IndexError):
                 # Corregido: usamos return en lugar de continue
                 self.s.send(encoded_inv_arg)
                 return
