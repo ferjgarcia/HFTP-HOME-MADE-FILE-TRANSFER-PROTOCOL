@@ -31,6 +31,8 @@ class Server:
         # FALTA: Crear socket del servidor, configurarlo, asignarlo
         # a una dirección y puerto, etc.
         self.serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # Luego probar el dodigo sin esta linea
+        self.serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.serverSocket.bind((addr, port))
         self.__dir__ = directory
         self.serverSocket.listen(3)

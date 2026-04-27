@@ -38,6 +38,7 @@ class Connection:
         self.directory = directory
         self.s = sock
         self.buffer = b""
+        self._connected = False
 
     def get_slice(
         self, filename: str, offset: int, size: int, raw: bool = False
@@ -120,105 +121,118 @@ class Connection:
                 str(INTERNAL_ERROR) + " " + error_messages[INTERNAL_ERROR] + EOL
             )  # "<code> <msg>\r\n"
             self.s.sendall(msg.encode("ascii"))
-
+    
     def handle(self) -> None:
-        """
-        Atiende eventos de la conexión hasta que termina.
-        """
+        self.s.settimeout(10.0)
+        print("DEBUG: Iniciando manejo de conexión...")
+        
         while True:
-            # Leo entrada, leer hasta que llegue \r\n
-            while EOL.encode("ascii") not in self.buffer:
-                temp_buff = self.s.recv(4096)  # 4096 = max bytes c/llamada
-                if (
-                    temp_buff == b""
-                ):  # Si recibo vacío, significa que la conexión terminó
-                    return
-                self.buffer += temp_buff
-
-            pos_bytes = self.buffer.find(EOL.encode("ascii"))  # Busco el primer "\r\n"
-            actual_buffer = self.buffer[
-                :pos_bytes
-            ]  # extraigo los datos a utilizar del buffer
-            self.buffer = self.buffer[
-                pos_bytes + 2 :
-            ]  # Recorto el buffer original, saco los datos que uso ahora
-
-            if (
-                b"\n" in actual_buffer
-            ):  # Si encunentro un "\n" solo en el comando actual retorno error
-                ret_bad_eol = str(BAD_EOL) + " " + error_messages[BAD_EOL] + EOL
-                self.s.send(ret_bad_eol.encode("ascii"))
-                return
-
-            decoded_string = actual_buffer.decode()  # Paso de bytes a string
-            argumentos = decoded_string.split()  # Lista de argumentos
-            cant_argumentos = len(argumentos)
-
-            ret_inv_com = (
-                str(INVALID_COMMAND) + " " + error_messages[INVALID_COMMAND] + EOL
-            )  # Comando inválido
-            ret_inv_arg = (
-                str(INVALID_ARGUMENTS) + " " + error_messages[INVALID_ARGUMENTS] + EOL
-            )  # Argumento inválido
-            ret_inv_cant_arg = (
-                str(BAD_REQUEST) + " " + error_messages[BAD_REQUEST] + EOL
-            )  # Comando vacío
-            encoded_inv_com = ret_inv_com.encode("ascii")
-            encoded_inv_arg = ret_inv_arg.encode("ascii")
-            encoded_inv_cant_arg = ret_inv_cant_arg.encode("ascii")
-
-            if cant_argumentos == 0:  # Se pasó una línea vacía
-                self.s.send(encoded_inv_cant_arg)
-                return
-
-            if argumentos[0] == COMMANDS[0]:  # Es get_file_listing
-                if cant_argumentos == 1:
-                    logging.info("Request: get_file_listing")
-                    self.get_file_listing()                          # Funciones a implementar
+            try:
+                # Busca saltos de linea
+                if b"\n" in self.buffer:
+                    pos = self.buffer.find(b"\n")
                     
-                else:
-                    self.s.send(
-                        encoded_inv_arg
-                    )  # Se pasaron más argumentos de los necesarios (Repetido en los demás)
+                    # Valida BAD_EOL
+                    if pos == 0 or self.buffer[pos - 1] != ord("\r"):
+                        ret = str(BAD_EOL) + " " + error_messages[BAD_EOL] + EOL
+                        self.s.sendall(ret.encode("ascii"))
 
-            elif argumentos[0] == COMMANDS[3]:  # Es help
-                if cant_argumentos == 1:
-                    self.help()                              # Funciones a implementar
-                else:
-                    self.s.send(encoded_inv_arg)
+                        self.s.close() 
+                        return
 
-            elif argumentos[0] == COMMANDS[4]:  # Es quit
-                if cant_argumentos == 1:
-                    self.quit()                              # Funciones a implementar
+                    linea = self.buffer[:pos - 1]
+                    self.buffer = self.buffer[pos + 1:] 
+                    
+                    self.process_command(linea.decode("ascii", errors="ignore"))
+                    continue 
+                
+                # Recepcion de datos
+                temp_buff = self.s.recv(4096)
+                
+                if temp_buff == b"":
+                    self.s.close()
                     return
-                else:
-                    self.s.send(encoded_inv_arg)
+                
+                self.buffer += temp_buff
+                
+            except Exception as e:
+                print(f"DEBUG: Excepción capturada: {e}")
+                self.s.close()
+                return
+                       
+    def process_command(self, decoded_string: str) -> None:
+        """
+        He movido la lógica de procesamiento aquí para limpiar el handle().
+        """
+        argumentos = decoded_string.split()
+        cant_argumentos = len(argumentos)
+        
+        
+        ret_inv_com = (
+            str(INVALID_COMMAND) + " " + error_messages[INVALID_COMMAND] + EOL
+        )  # Comando inválido
+        ret_inv_arg = (
+            str(INVALID_ARGUMENTS) + " " + error_messages[INVALID_ARGUMENTS] + EOL
+        )  # Argumento inválido
+        ret_inv_cant_arg = (
+            str(BAD_REQUEST) + " " + error_messages[BAD_REQUEST] + EOL
+        )  # Comando vacío
+        encoded_inv_com = ret_inv_com.encode("ascii")
+        encoded_inv_arg = ret_inv_arg.encode("ascii")
+        encoded_inv_cant_arg = ret_inv_cant_arg.encode("ascii")
 
-            elif argumentos[0] == COMMANDS[1]:    # Es get_metadata FILENAME
-                if cant_argumentos == 2:    
-                    logging.info("Request: get_metadata %s", decoded_string)
-                    self.get_metadata(argumentos[1]) # Debería poner una comprobación de si esta bien el argumento o se hace en la función?
-                else: 
-                    self.s.send(encoded_inv_arg)
+        if cant_argumentos == 0:  # Se pasó una línea vacía
+            self.s.send(encoded_inv_cant_arg)
+            return
 
-            elif argumentos[0] == COMMANDS[2]:
-                try:
-                    OFFSET = int(
-                        argumentos[2]
-                    )  # Comprobamos si OFFSET y SIZE son números
-                    SIZE = int(argumentos[3])
-                except:
-                    self.s.send(encoded_inv_arg)
-                    continue
-                # Sigue la estructura get_slice FILENAME OFFSET SIZE [raw]
-                if cant_argumentos == 5 and argumentos[4] == "raw":
-                    self.get_slice(argumentos[1], OFFSET, SIZE, "raw")
-                elif cant_argumentos == 4:
-                    self.get_slice(argumentos[1], OFFSET, SIZE)
-                else:
-                    self.s.send(encoded_inv_arg)
+        if argumentos[0] == COMMANDS[0]:  # Es get_file_listing
+            if cant_argumentos == 1:
+                logging.info("Request: get_file_listing")
+                self.get_file_listing()                          # Funciones a implementar
+                    
             else:
-                self.s.send(encoded_inv_com)  # Si no existe el comando
+                self.s.send(
+                    encoded_inv_arg
+                )  # Se pasaron más argumentos de los necesarios (Repetido en los demás)
+
+        elif argumentos[0] == COMMANDS[3]:  # Es help
+            if cant_argumentos == 1:
+                self.help()                              # Funciones a implementar
+            else:
+                self.s.send(encoded_inv_arg)
+
+        elif argumentos[0] == COMMANDS[4]:  # Es quit
+            if cant_argumentos == 1:
+                self.quit()                              # Funciones a implementar
+                return
+            else:
+                self.s.send(encoded_inv_arg)
+
+        elif argumentos[0] == COMMANDS[1]:    # Es get_metadata FILENAME
+            if cant_argumentos == 2:    
+                logging.info("Request: get_metadata %s", decoded_string)
+                self.get_metadata(argumentos[1]) # Debería poner una comprobación de si esta bien el argumento o se hace en la función?
+            else: 
+                self.s.send(encoded_inv_arg)
+
+        elif argumentos[0] == COMMANDS[2]: # get_slice
+            try:
+                OFFSET = int(argumentos[2])
+                SIZE = int(argumentos[3])
+            except:
+                # Corregido: usamos return en lugar de continue
+                self.s.send(encoded_inv_arg)
+                return
+            
+            # Sigue la estructura get_slice FILENAME OFFSET SIZE [raw]
+            if cant_argumentos == 5 and argumentos[4] == "raw":
+                self.get_slice(argumentos[1], OFFSET, SIZE, True) # Corregí 'raw' a True
+            elif cant_argumentos == 4:
+                self.get_slice(argumentos[1], OFFSET, SIZE)
+            else:
+                self.s.send(encoded_inv_arg)
+        else:
+            self.s.send(encoded_inv_com)
 
     def get_file_listing (self) -> None:
         result = os.listdir(self.directory)
@@ -267,6 +281,7 @@ class Connection:
         encoded_msg = msg.encode("ascii")
         self.s.send(encoded_msg)
         self.s.close()  # Cerramos la conexión
+        self._connected = False
 
     def help(self) -> None:
         """
