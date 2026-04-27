@@ -14,14 +14,14 @@ from constants import (
     BAD_REQUEST,
     CODE_OK,
     COMMANDS,
-    # CONTENT_LENGTH_PREFIX, ESTO DEBIERAMOS USARLO??
+    # CONTENT_LENGTH_PREFIX
     EOL,
     FILE_NOT_FOUND,
     INTERNAL_ERROR,
     INVALID_ARGUMENTS,
     INVALID_COMMAND,
     error_messages,
-    # fatal_status, ESTO DEBIERAMOS USARLO??
+    # fatal_status
 )
 
 
@@ -166,7 +166,6 @@ class Connection:
             except socket.timeout:
                 continue
             except Exception as e:
-                print(f"DEBUG: Excepción capturada: {e}")
                 self.s.close()
                 return
 
@@ -200,7 +199,7 @@ class Connection:
         if argumentos[0] == COMMANDS[0]:  # Es get_file_listing
             if cant_argumentos == 1:
                 #logging.info("Request: get_file_listing")
-                self.get_file_listing()                          # Funciones a implementar
+                self.get_file_listing()
 
             else:
                 # Se pasaron más argumentos de los necesarios (Repetido en los
@@ -209,13 +208,13 @@ class Connection:
 
         elif argumentos[0] == COMMANDS[3]:  # Es help
             if cant_argumentos == 1:
-                self.help()                              # Funciones a implementar
+                self.help()
             else:
                 self.s.send(encoded_inv_arg)
 
         elif argumentos[0] == COMMANDS[4]:  # Es quit
             if cant_argumentos == 1:
-                self.quit()                              # Funciones a implementar
+                self.quit()
                 return
             else:
                 self.s.send(encoded_inv_arg)
@@ -223,8 +222,6 @@ class Connection:
         elif argumentos[0] == COMMANDS[1]:    # Es get_metadata FILENAME
             if cant_argumentos == 2:
                 #logging.info("Request: get_metadata %s", decoded_string)
-                # Debería poner una comprobación de si esta bien el argumento o
-                # se hace en la función?
                 self.get_metadata(argumentos[1])
             else:
                 self.s.send(encoded_inv_arg)
@@ -253,6 +250,13 @@ class Connection:
             self.s.send(encoded_inv_com)
 
     def get_file_listing(self) -> None:
+        """
+        Sin argumentos.
+        Obtiene la lista de archivos disponibles.
+        Payload: nombres de archivos, uno por línea, línea vacía \r\n indica fin.
+        Respuesta: 0 OK + \r\n + nombres + \r\n.
+        """
+
         result = os.listdir(self.directory)
         ret_ok = str(CODE_OK) + " " + error_messages[CODE_OK] + EOL
         encoded_ret_ok = ret_ok.encode("ascii")
@@ -267,6 +271,12 @@ class Connection:
         return None
 
     def get_metadata(self, file: str) -> None:
+        """
+        Un argumento FILENAME.
+        Payload en éxito: una línea con el tamaño en bytes (decimal ASCII) + \r\n.
+        Respuesta: 0 OK + \r\n + tamaño + \r\n.
+        """
+
         ret_file_not_found = str(FILE_NOT_FOUND) + \
             " " + error_messages[FILE_NOT_FOUND] + EOL
         encoded_file_not_found = ret_file_not_found.encode("ascii")
@@ -282,13 +292,6 @@ class Connection:
             self.s.send(encoded_file_not_found)
         return None
 
-        # INSTRUCCIONES DE COMO IMPLEMENTAR DE CLASES
-        # Leo entrada, leer hasta que llegue \r\n
-        # Me fijo si es un comando
-        # Si los parámetros son correctos
-        # Ejecuto el comando
-        # Mando respuesta
-
     def quit(self) -> None:
         """
         Sin argumentos.
@@ -296,6 +299,7 @@ class Connection:
         El servidor responde 0 OK y cierra la conexión.
         Sin payload.
         """
+
         msg = str(CODE_OK) + " " + error_messages[CODE_OK] + EOL
         encoded_msg = msg.encode("ascii")
         self.s.send(encoded_msg)
@@ -308,6 +312,7 @@ class Connection:
         Facilita pruebas con telnet y depuración.
         Respuesta: 0 OK + \r\n + nombres de comandos + \r\n.
         """
+
         comms = EOL.join(COMMANDS) + EOL
         msg = str(CODE_OK) + " " + error_messages[CODE_OK] + EOL + comms + EOL
         encoded_msg = msg.encode("ascii")
