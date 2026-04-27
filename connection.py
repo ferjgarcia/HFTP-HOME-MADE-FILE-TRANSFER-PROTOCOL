@@ -128,10 +128,10 @@ class Connection:
             self.s.sendall(msg.encode("ascii"))
 
     def handle(self) -> None:
-        self.s.settimeout(10.0)
+        #self.s.settimeout(10.0)
         print("DEBUG: Iniciando manejo de conexión...")
-
-        while True:
+        self._connected = True
+        while self._connected:
             try:
                 # Busca saltos de linea
                 if b"\n" in self.buffer:
@@ -192,13 +192,14 @@ class Connection:
         encoded_inv_arg = ret_inv_arg.encode("ascii")
         encoded_inv_cant_arg = ret_inv_cant_arg.encode("ascii")
 
+        logging.info("Request: get_metadata %s", decoded_string)
         if cant_argumentos == 0:  # Se pasó una línea vacía
             self.s.send(encoded_inv_cant_arg)
             return
 
         if argumentos[0] == COMMANDS[0]:  # Es get_file_listing
             if cant_argumentos == 1:
-                logging.info("Request: get_file_listing")
+                #logging.info("Request: get_file_listing")
                 self.get_file_listing()                          # Funciones a implementar
 
             else:
@@ -221,7 +222,7 @@ class Connection:
 
         elif argumentos[0] == COMMANDS[1]:    # Es get_metadata FILENAME
             if cant_argumentos == 2:
-                logging.info("Request: get_metadata %s", decoded_string)
+                #logging.info("Request: get_metadata %s", decoded_string)
                 # Debería poner una comprobación de si esta bien el argumento o
                 # se hace en la función?
                 self.get_metadata(argumentos[1])
