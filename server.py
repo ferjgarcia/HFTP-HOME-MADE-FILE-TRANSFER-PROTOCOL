@@ -48,13 +48,12 @@ class Server:
             try:
                 (clientSocket, address) = self.serverSocket.accept()
                 conn = connection.Connection(clientSocket, self.__dir__)
-                hilo = threading.Thread(target=conn.handle)  
-                hilo.daemon = True 
-                hilo.start() 
+                hilo = threading.Thread(target=conn.handle)
+                hilo.daemon = True
+                hilo.start()
             except Exception as e:
                 print(f"Error en el servidor: {e}")
-                
-             
+
 def main() -> None:
     """Parsea los argumentos y lanza el server"""
     parser = argparse.ArgumentParser()

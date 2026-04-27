@@ -4,7 +4,6 @@
 # $Id: connection.py 455 2011-05-01 00:32:09Z carlos $
 
 import socket
-import client
 from base64 import b64encode
 import os
 import logging
@@ -15,14 +14,14 @@ from constants import (
     BAD_REQUEST,
     CODE_OK,
     COMMANDS,
-    CONTENT_LENGTH_PREFIX,
+    # CONTENT_LENGTH_PREFIX, ESTO DEBIERAMOS USARLO??
     EOL,
     FILE_NOT_FOUND,
     INTERNAL_ERROR,
     INVALID_ARGUMENTS,
     INVALID_COMMAND,
     error_messages,
-    fatal_status,
+    # fatal_status, ESTO DEBIERAMOS USARLO??
 )
 
 
@@ -58,9 +57,10 @@ class Connection:
           porque el archivo puede contener esos mismos bytes como datos
         """
 
-        ## construir el path y veo que no sesalga del directorio base
+        # construir el path y veo que no sesalga del directorio base
         if ".." in filename or "/" in filename:
-            msg = str(FILE_NOT_FOUND) + " " + error_messages[FILE_NOT_FOUND] + EOL
+            msg = str(FILE_NOT_FOUND) + " " + \
+                error_messages[FILE_NOT_FOUND] + EOL
             self.s.sendall(msg.encode("ascii"))
             return
 
@@ -74,7 +74,8 @@ class Connection:
                 filesize = file.tell()  # leo la posicion
 
                 if offset < 0 or size < 0:
-                    msg = str(BAD_OFFSET) + " " + error_messages[BAD_OFFSET] + EOL
+                    msg = str(BAD_OFFSET) + " " + \
+                        error_messages[BAD_OFFSET] + EOL
                     self.s.sendall(
                         msg.encode("ascii")
                     )  # sendall manda bytes al cliente -> escribe en la red
@@ -112,68 +113,76 @@ class Connection:
 
         except FileNotFoundError:
             msg = (
-                str(FILE_NOT_FOUND) + " " + error_messages[FILE_NOT_FOUND] + EOL
-            )  # "<code> <msg>\r\n"
+                str(FILE_NOT_FOUND) +
+                " " +
+                error_messages[FILE_NOT_FOUND] +
+                EOL)  # "<code> <msg>\r\n"
             self.s.sendall(msg.encode("ascii"))
 
         except Exception:  # demas fallos son internos
             msg = (
-                str(INTERNAL_ERROR) + " " + error_messages[INTERNAL_ERROR] + EOL
-            )  # "<code> <msg>\r\n"
+                str(INTERNAL_ERROR) +
+                " " +
+                error_messages[INTERNAL_ERROR] +
+                EOL)  # "<code> <msg>\r\n"
             self.s.sendall(msg.encode("ascii"))
-    
+
     def handle(self) -> None:
         self.s.settimeout(10.0)
         print("DEBUG: Iniciando manejo de conexión...")
-        
+
         while True:
             try:
                 # Busca saltos de linea
                 if b"\n" in self.buffer:
                     pos = self.buffer.find(b"\n")
-                    
+
                     # Valida BAD_EOL
                     if pos == 0 or self.buffer[pos - 1] != ord("\r"):
-                        ret = str(BAD_EOL) + " " + error_messages[BAD_EOL] + EOL
+                        ret = str(BAD_EOL) + " " + \
+                            error_messages[BAD_EOL] + EOL
                         self.s.sendall(ret.encode("ascii"))
 
-                        self.s.close() 
+                        self.s.close()
                         return
 
                     linea = self.buffer[:pos - 1]
-                    self.buffer = self.buffer[pos + 1:] 
-                    
-                    self.process_command(linea.decode("ascii", errors="ignore"))
-                    continue 
-                
+                    self.buffer = self.buffer[pos + 1:]
+
+                    self.process_command(
+                        linea.decode(
+                            "ascii", errors="ignore"))
+                    continue
+
                 # Recepcion de datos
                 temp_buff = self.s.recv(4096)
-                
+
                 if temp_buff == b"":
                     self.s.close()
                     return
-                
+
                 self.buffer += temp_buff
-                
+
             except Exception as e:
                 print(f"DEBUG: Excepción capturada: {e}")
                 self.s.close()
                 return
-                       
+
     def process_command(self, decoded_string: str) -> None:
         """
         He movido la lógica de procesamiento aquí para limpiar el handle().
         """
         argumentos = decoded_string.split()
         cant_argumentos = len(argumentos)
-        
-        
+
         ret_inv_com = (
             str(INVALID_COMMAND) + " " + error_messages[INVALID_COMMAND] + EOL
         )  # Comando inválido
         ret_inv_arg = (
-            str(INVALID_ARGUMENTS) + " " + error_messages[INVALID_ARGUMENTS] + EOL
-        )  # Argumento inválido
+            str(INVALID_ARGUMENTS) +
+            " " +
+            error_messages[INVALID_ARGUMENTS] +
+            EOL)  # Argumento inválido
         ret_inv_cant_arg = (
             str(BAD_REQUEST) + " " + error_messages[BAD_REQUEST] + EOL
         )  # Comando vacío
@@ -189,11 +198,11 @@ class Connection:
             if cant_argumentos == 1:
                 logging.info("Request: get_file_listing")
                 self.get_file_listing()                          # Funciones a implementar
-                    
+
             else:
-                self.s.send(
-                    encoded_inv_arg
-                )  # Se pasaron más argumentos de los necesarios (Repetido en los demás)
+                # Se pasaron más argumentos de los necesarios (Repetido en los
+                # demás)
+                self.s.send(encoded_inv_arg)
 
         elif argumentos[0] == COMMANDS[3]:  # Es help
             if cant_argumentos == 1:
@@ -209,24 +218,30 @@ class Connection:
                 self.s.send(encoded_inv_arg)
 
         elif argumentos[0] == COMMANDS[1]:    # Es get_metadata FILENAME
-            if cant_argumentos == 2:    
+            if cant_argumentos == 2:
                 logging.info("Request: get_metadata %s", decoded_string)
-                self.get_metadata(argumentos[1]) # Debería poner una comprobación de si esta bien el argumento o se hace en la función?
-            else: 
+                # Debería poner una comprobación de si esta bien el argumento o
+                # se hace en la función?
+                self.get_metadata(argumentos[1])
+            else:
                 self.s.send(encoded_inv_arg)
 
-        elif argumentos[0] == COMMANDS[2]: # get_slice
+        elif argumentos[0] == COMMANDS[2]:  # get_slice
             try:
                 OFFSET = int(argumentos[2])
                 SIZE = int(argumentos[3])
-            except:
+            except BaseException:
                 # Corregido: usamos return en lugar de continue
                 self.s.send(encoded_inv_arg)
                 return
-            
+
             # Sigue la estructura get_slice FILENAME OFFSET SIZE [raw]
             if cant_argumentos == 5 and argumentos[4] == "raw":
-                self.get_slice(argumentos[1], OFFSET, SIZE, True) # Corregí 'raw' a True
+                self.get_slice(
+                    argumentos[1],
+                    OFFSET,
+                    SIZE,
+                    True)  # Corregí 'raw' a True
             elif cant_argumentos == 4:
                 self.get_slice(argumentos[1], OFFSET, SIZE)
             else:
@@ -234,7 +249,7 @@ class Connection:
         else:
             self.s.send(encoded_inv_com)
 
-    def get_file_listing (self) -> None:
+    def get_file_listing(self) -> None:
         result = os.listdir(self.directory)
         ret_ok = str(CODE_OK) + " " + error_messages[CODE_OK] + EOL
         encoded_ret_ok = ret_ok.encode("ascii")
@@ -247,9 +262,10 @@ class Connection:
         encoded_final = final.encode("ascii")
         self.s.send(encoded_final)
         return None
-    
-    def get_metadata (self, file: str) -> None:
-        ret_file_not_found = str(FILE_NOT_FOUND) + " " + error_messages[FILE_NOT_FOUND] + EOL
+
+    def get_metadata(self, file: str) -> None:
+        ret_file_not_found = str(FILE_NOT_FOUND) + \
+            " " + error_messages[FILE_NOT_FOUND] + EOL
         encoded_file_not_found = ret_file_not_found.encode("ascii")
         list_file = os.listdir(self.directory)
         if file in list_file:
@@ -259,10 +275,10 @@ class Connection:
             ret_size = str(size) + EOL
             self.s.send(ret.encode("ascii"))
             self.s.send(ret_size.encode("ascii"))
-        else: 
+        else:
             self.s.send(encoded_file_not_found)
         return None
-        
+
         # INSTRUCCIONES DE COMO IMPLEMENTAR DE CLASES
         # Leo entrada, leer hasta que llegue \r\n
         # Me fijo si es un comando
