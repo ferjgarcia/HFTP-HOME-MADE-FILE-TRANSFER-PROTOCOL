@@ -223,7 +223,7 @@ class Connection:
 
         elif argumentos[0] == COMMANDS[1]:    # Es get_metadata FILENAME
             if cant_argumentos == 2:
-                logging.info("Request: get_metadata %s", decoded_string)
+                logging.info("Request: get_metadata %s", argumentos[1])
                 self.get_metadata(argumentos[1])
             else:
                 self.s.send(encoded_inv_arg)
@@ -280,8 +280,7 @@ class Connection:
         Respuesta: 0 OK + \r\n + tamaño + \r\n.
         """
 
-        ret_file_not_found = str(FILE_NOT_FOUND) + \
-            " " + error_messages[FILE_NOT_FOUND] + EOL
+        ret_file_not_found = str(FILE_NOT_FOUND) + " " + error_messages[FILE_NOT_FOUND] + EOL
         encoded_file_not_found = ret_file_not_found.encode("ascii")
         list_file = os.listdir(self.directory)
         if file in list_file:
