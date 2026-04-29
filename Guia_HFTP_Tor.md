@@ -307,7 +307,7 @@ Con esto puedes compartir tu servidor HFTP con otros estudiantes desde casa usan
 
 ### Tests rápidos (sin Tor en marcha)
 
-Desde la raíz del repo:
+Desde la raíz del proyecto (directorio donde están `server.py` y `Makefile` tras descomprimir el kickstart, o la raíz del repo docente):
 
 ```bash
 make test-tor
